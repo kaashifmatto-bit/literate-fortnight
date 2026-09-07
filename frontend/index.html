@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArticulAIT | 3D Walkthrough Studio</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-mesh"></div>
+    
+    <main class="container">
+        <header>
+            <div class="logo-container">
+                <div class="logo-orb"></div>
+                <h1>ArticulAIT <span>Studio</span></h1>
+            </div>
+            <p class="subtitle">Next-Gen Real Estate 3D Reconstruction</p>
+        </header>
+
+        <div class="dashboard">
+            <!-- Upload Section -->
+            <section class="glass-panel upload-section" id="upload-panel">
+                <div class="drop-zone" id="drop-zone">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <h2>Upload Room Capture</h2>
+                    <p>Add photos one by one or drop a batch of high quality photos</p>
+                    <div style="display: flex; gap: 10px; justify-center: center; margin-top: 10px;">
+                        <button class="primary-btn" id="single-btn">➕ Add Image One by One</button>
+                        <button class="secondary-btn" id="browse-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 12px; cursor: pointer;">Browse Batch</button>
+                    </div>
+                    <input type="file" id="file-input" multiple accept="image/*,video/mp4" hidden>
+                    <input type="file" id="single-file-input" accept="image/*" hidden>
+                </div>
+                <div id="staged-preview" class="hidden" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span id="staged-count" style="font-size: 14px; font-weight: bold; color: #a5b4fc;">0 Photos Staged</span>
+                        <button id="start-upload-btn" class="primary-btn" style="padding: 8px 16px; font-size: 13px;">Upload & Process 3D</button>
+                    </div>
+                    <div id="staged-list" style="display: flex; flex-wrap: wrap; gap: 8px; max-height: 120px; overflow-y: auto;"></div>
+                </div>
+            </section>
+
+            <!-- Processing Pipeline Status -->
+            <section class="glass-panel processing-section hidden" id="processing-panel">
+                <h2>Reconstruction Pipeline</h2>
+                
+                <div class="pipeline">
+                    <div class="step active" id="step-1">
+                        <div class="step-indicator">1</div>
+                        <div class="step-content">
+                            <h3>COLMAP Feature Extraction</h3>
+                            <p>Detecting keypoints and matching geometry</p>
+                        </div>
+                        <div class="loader"></div>
+                    </div>
+
+                    <div class="step" id="step-2">
+                        <div class="step-indicator">2</div>
+                        <div class="step-content">
+                            <h3>Sparse Point Cloud Mapping</h3>
+                            <p>Calculating camera poses and spatial depth</p>
+                        </div>
+                        <div class="loader"></div>
+                    </div>
+
+                    <div class="step" id="step-3">
+                        <div class="step-indicator">3</div>
+                        <div class="step-content">
+                            <h3>3D Gaussian Splatting</h3>
+                            <p>Training neural radiance fields (10,000 iter)</p>
+                        </div>
+                        <div class="loader"></div>
+                    </div>
+                </div>
+                
+                <div class="action-row">
+                    <button class="primary-btn glow hidden" id="view-walkthrough-btn">Launch 3D Walkthrough</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

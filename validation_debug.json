@@ -1,0 +1,218 @@
+{
+  "status": "warning",
+  "usable_image_count": 240,
+  "blur_failures": [],
+  "low_overlap_pairs": [
+    {
+      "pair": [
+        "frame_000001.png",
+        "frame_000002.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000009.png",
+        "frame_000010.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000017.png",
+        "frame_000018.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000025.png",
+        "frame_000026.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000033.png",
+        "frame_000034.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000041.png",
+        "frame_000042.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000049.png",
+        "frame_000050.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000057.png",
+        "frame_000058.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000065.png",
+        "frame_000066.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000073.png",
+        "frame_000074.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000081.png",
+        "frame_000082.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000089.png",
+        "frame_000090.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000097.png",
+        "frame_000098.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000105.png",
+        "frame_000106.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000113.png",
+        "frame_000114.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000121.png",
+        "frame_000122.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000129.png",
+        "frame_000130.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000137.png",
+        "frame_000138.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000145.png",
+        "frame_000146.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000153.png",
+        "frame_000154.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000161.png",
+        "frame_000162.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000169.png",
+        "frame_000170.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000177.png",
+        "frame_000178.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000185.png",
+        "frame_000186.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000193.png",
+        "frame_000194.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000201.png",
+        "frame_000202.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000209.png",
+        "frame_000210.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000217.png",
+        "frame_000218.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000225.png",
+        "frame_000226.png"
+      ],
+      "matches": 0
+    },
+    {
+      "pair": [
+        "frame_000233.png",
+        "frame_000234.png"
+      ],
+      "matches": 0
+    }
+  ],
+  "recommendation": "Potential coverage gap detected: 30 frame transitions have low feature overlap (<80 matches)."
+}

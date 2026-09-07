@@ -1,0 +1,127 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env.bak/
+.env
+*.env
+
+# Logs
+logs/
+*.log
+
+# Node
+node_modules/
+.npm/
+
+# ArticulAIT Data Directories (Very important to ignore!)
+data/
+ckpts/
+ply/
+renders/
+stats/
+tb/
+videos/
+
+#docs
+docs/ 
+
+# Database
+*.db
+*.sqlite3
+*.sqlite
+
+# IDEs
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+models/
+scripts/
+src/
+viewer/
+threejs-3dgs-freeroam/
+gaussian-splatting/
+gsplat_source/
+frontend-next/
+backend/
+
+
+# Photos & Datasets
+*.zip
+*.mp4
+*.pt
+Office_360_Test_Photos/
+test_dataset_photos/
+50_Test_Images/
+Room_Walkthrough_Dataset/
+Test_Room/
+temp_bedroom/
+Test_Room_2/
+USA_House_Photos/
+USA_House_Walkthrough_Dataset/
+360_images/
+Test_Scan/
+Test_100_Images/
+temp_bedroom_test/
+bedroom_frames_upscaled_6MP/
+extracted_frames/
+vehicle_3dgs_dataset/
+*_vehicle_3dgs*
+frames_full_max/
+frames_min_10/
+Chicmic/
+tmp/
+extracted_frames_hq/
+walkthrough_frames/
+images_dataset_azimuth/
+backend/rd/output/
+# Binaries & Large Executables
+colmap_bin/
+
+# Testing & Working Folder
+tests/
+
+# Media Assets
+office_3dgs_demo.png
+PLR_demo.png
+
+# Generated Assets
+msdir/
+saved_3d_walkthrough/
+hf_cache/
+*.docx
+listing_scene_output*.json
+room_a_candidates.json
+
+
+#testing 
+test.cu
+test.exe
+test_backup.cu
+test.exp
+test.lib
+test_backup.lib
+vs_BuildTools.exe
+vs2022_config.vsconfig
+vc17_x64_Release.natstepfilter
+
+#testing .glb/.obj,.ply files
+*.glb
+*.obj
+*.ply
+*.splat
+
+
+#cache files
+.cache/
+.next/
+_caches/
+
+#some md files 
+CLAUDE.md

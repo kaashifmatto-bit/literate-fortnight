@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Matterport + Street View 360° Virtual Panorama Walkthrough</title>
+  <meta name="description" content="A high-performance web-based 360 degree virtual tour player featuring Street View smooth inertia free-look and Matterport walk transition animations." />
+  
+  <!-- Modern Typography (Google Font Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- 360 Three.js Canvas Container -->
+    <div id="pano-viewer-container"></div>
+
+    <!-- Hotspot Pins 3D Projection Overlay Layer -->
+    <div id="hotspot-layer-container"></div>
+
+    <!-- Top-Left Title & Node Breadcrumb Chrome -->
+    <div class="tour-header-chrome">
+      <div class="tour-title-card">
+        <h1 class="tour-title-main" id="tour-main-title">Luxury Office & Executive Center</h1>
+        <div class="tour-node-subtitle" id="tour-node-title">📍 Main Reception</div>
+      </div>
+    </div>
+
+    <!-- Top-Right Loading Indicator -->
+    <div class="tour-loading-indicator" id="loading-indicator">
+      <div class="spinner-icon"></div>
+      <span>WALK TRANSITION...</span>
+    </div>
+
+    <!-- Bottom Interactive Toolbar Chrome -->
+    <div class="tour-toolbar-chrome">
+      <select id="node-select" class="node-select-dropdown" title="Select Room Node"></select>
+
+      <div class="toolbar-divider"></div>
+
+      <button id="btn-gyro" class="toolbar-btn" title="Toggle Gyroscope Look-Around (Mobile)">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M12 3v18M3 12h18"></path>
+        </svg>
+      </button>
+
+      <button id="btn-admin" class="toolbar-btn" title="Toggle Admin / Authoring Mode (Click sphere for yaw/pitch)">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v20M2 12h20"></path>
+          <circle cx="12" cy="12" r="7"></circle>
+        </svg>
+      </button>
+
+      <button id="btn-help" class="toolbar-btn" title="Navigation Instructions & Help">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </button>
+
+      <button id="btn-fullscreen" class="toolbar-btn" title="Toggle Fullscreen Mode">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Bottom-Left Interactive Floor Plan Widget -->
+    <div id="minimap-container"></div>
+
+    <!-- Bottom-Right Authoring / Admin Panel -->
+    <div id="admin-panel-container"></div>
+
+    <!-- Modal Backdrop & Lightbox Container -->
+    <div id="modal-container"></div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
