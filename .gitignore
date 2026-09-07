@@ -41,13 +41,6 @@ docs/
 # OS Files
 .DS_Store
 Thumbs.db
-models/
-scripts/
-src/
-viewer/
-threejs-3dgs-freeroam/
-gaussian-splatting/
-gsplat_source/
 
 
 

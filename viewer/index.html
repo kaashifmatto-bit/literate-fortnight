@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArticulAIT Walkthrough</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: sans-serif;
+            color: white;
+            user-select: none;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #home-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(79, 70, 229, 0.8);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 20;
+            text-decoration: none;
+            backdrop-filter: blur(5px);
+            transition: background 0.2s;
+        }
+
+        #home-btn:hover {
+            background: rgba(79, 70, 229, 1);
+        }
+
+        #progress {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            color: #ccc;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Hidden elements expected by main.js */
+        #fps,
+        #camid {
+            display: none;
+        }
+
+        /* Google Maps Style Navigation Overlay */
+        #nav-overlay {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            z-index: 30;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            font-size: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-btn:hover,
+        .nav-btn:active {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+        }
+
+        .nav-row {
+            display: flex;
+            gap: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <a id="home-btn" href="/">← Back to Dashboard</a>
+
+    <div id="progress">Loading 3D Scene...</div>
+    <div id="spinner" style="display:none;"></div>
+    <div id="message"
+        style="position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%); color: red; font-weight: bold; z-index: 10;">
+    </div>
+    <div id="fps"></div>
+    <div id="camid"></div>
+
+    <!-- Google Maps Style Controls -->
+    <div id="nav-overlay">
+        <button class="nav-btn" onmousedown="simulateKey('ArrowUp', true)" onmouseup="simulateKey('ArrowUp', false)"
+            onmouseleave="simulateKey('ArrowUp', false)" ontouchstart="simulateKey('ArrowUp', true)"
+            ontouchend="simulateKey('ArrowUp', false)">&#8593;</button>
+        <div class="nav-row">
+            <button class="nav-btn" onmousedown="simulateKey('ArrowLeft', true)"
+                onmouseup="simulateKey('ArrowLeft', false)" onmouseleave="simulateKey('ArrowLeft', false)"
+                ontouchstart="simulateKey('ArrowLeft', true)"
+                ontouchend="simulateKey('ArrowLeft', false)">&#8592;</button>
+            <button class="nav-btn" onmousedown="simulateKey('ArrowDown', true)"
+                onmouseup="simulateKey('ArrowDown', false)" onmouseleave="simulateKey('ArrowDown', false)"
+                ontouchstart="simulateKey('ArrowDown', true)"
+                ontouchend="simulateKey('ArrowDown', false)">&#8595;</button>
+            <button class="nav-btn" onmousedown="simulateKey('ArrowRight', true)"
+                onmouseup="simulateKey('ArrowRight', false)" onmouseleave="simulateKey('ArrowRight', false)"
+                ontouchstart="simulateKey('ArrowRight', true)"
+                ontouchend="simulateKey('ArrowRight', false)">&#8594;</button>
+        </div>
+        <div style="text-shadow: 1px 1px 3px black; font-weight: bold; margin-top: 10px; font-size: 0.9rem;">Hold to
+            move like Google Maps</div>
+    </div>
+    <div id="viewer-container" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1;"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/viewer/lib/three.module.js",
+            "@mkkellogg/gaussian-splats-3d": "/viewer/lib/gaussian-splats-3d.module.js"
+        }
+    }
+    </script>
+    <script type="module">
+        import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
+
+        const viewer = new GaussianSplats3D.Viewer({
+            'halfPrecision': true,
+            'rootElement': document.getElementById('viewer-container'),
+            'ignoreHardwareFPSLimit': false,
+            'sharedMemoryForWorkers': false,
+            'cameraUp': [0, -1, -0.6] // Standard COLMAP up vector compensation
+        });
+
+        viewer.addSplatScene('/data/3dgs_output/scene.splat', {
+            'showLoadingUI': false
+        }).then(() => {
+            document.getElementById('progress').style.display = 'none';
+            document.getElementById('spinner').style.display = 'none';
+            viewer.start();
+        }).catch((error) => {
+            document.getElementById('message').innerText = `Error loading scene: ${error}`;
+            document.getElementById('progress').style.display = 'none';
+            document.getElementById('spinner').style.display = 'none';
+        });
+    </script>
+
+    <script>
+        // Global error catcher to display on screen
+        window.addEventListener('error', function (e) {
+            document.getElementById('message').innerText += " Error: " + e.message;
+            document.getElementById('progress').style.display = 'none';
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+            document.getElementById('message').innerText += " Promise Error: " + (e.reason && e.reason.message ? e.reason.message : e.reason);
+            document.getElementById('progress').style.display = 'none';
+        });
+    </script>
+    <script>
+        // Simulate keyboard events for the main WebGL script
+        function simulateKey(code, isDown) {
+            const event = new KeyboardEvent(isDown ? 'keydown' : 'keyup', {
+                code: code,
+                key: code.replace('Arrow', ''),
+                bubbles: true
+            });
+            window.dispatchEvent(event);
+        }
+    </script>
+
+    <script>
+        // Global error catcher to display on screen
+        window.addEventListener('error', function (e) {
+            document.getElementById('message').innerText += " Error: " + e.message;
+            document.getElementById('progress').style.display = 'none';
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+            document.getElementById('message').innerText += " Promise Error: " + (e.reason && e.reason.message ? e.reason.message : e.reason);
+            document.getElementById('progress').style.display = 'none';
+        });
+    </script>
+
+</body>
+
+</html>
