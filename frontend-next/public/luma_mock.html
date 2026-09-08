@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luma Cloud Render</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#050508;overflow:hidden;width:100vw;height:100vh;font-family:system-ui,-apple-system,sans-serif}
+  canvas{display:block;position:absolute;top:0;left:0;width:100%;height:100%}
+
+  #badge{
+    position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;
+    background:rgba(10,10,20,0.9);border:1px solid rgba(99,102,241,0.5);
+    backdrop-filter:blur(16px);border-radius:999px;padding:8px 22px;
+    display:flex;align-items:center;gap:10px;
+    box-shadow:0 0 40px rgba(99,102,241,0.25);white-space:nowrap;
+  }
+  .dot{width:9px;height:9px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80;animation:pulse 2s infinite}
+  #badge span{color:#fff;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+
+  /* D-Pad controls */
+  #controls{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    z-index:100;display:flex;flex-direction:column;align-items:center;gap:6px;
+    user-select:none;
+  }
+  #controls .row{display:flex;gap:6px}
+  .btn{
+    width:48px;height:48px;border-radius:12px;
+    background:rgba(10,10,20,0.85);border:1px solid rgba(255,255,255,0.15);
+    color:rgba(255,255,255,0.8);font-size:18px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(8px);transition:all .15s;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  }
+  .btn:hover{background:rgba(99,102,241,0.35);border-color:rgba(99,102,241,0.6);color:#fff}
+  .btn:active,.btn.pressed{background:rgba(99,102,241,0.6);border-color:rgba(99,102,241,0.9);transform:scale(0.92)}
+  .btn-center{width:40px;height:40px;font-size:13px;color:rgba(255,255,255,0.4)}
+
+  #hint-look{
+    position:fixed;top:68px;left:50%;transform:translateX(-50%);
+    color:rgba(255,255,255,.30);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+    z-index:100;white-space:nowrap;
+  }
+
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(74,222,128,.7)}70%{box-shadow:0 0 0 8px rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
+</style>
+</head>
+<body>
+
+<div id="badge"><div class="dot"></div><span>Luma Cloud Render Complete</span></div>
+<div id="hint-look">🖱 Click &amp; drag to look around</div>
+
+<canvas id="c"></canvas>
+
+<!-- D-Pad Navigation -->
+<div id="controls">
+  <div class="row">
+    <div style="width:48px"></div>
+    <button class="btn" id="btnF" title="Forward">▲</button>
+    <div style="width:48px"></div>
+  </div>
+  <div class="row">
+    <button class="btn" id="btnL" title="Left">◀</button>
+    <button class="btn btn-center" id="btnReset" title="Reset view">⌖</button>
+    <button class="btn" id="btnR" title="Right">▶</button>
+  </div>
+  <div class="row">
+    <div style="width:48px"></div>
+    <button class="btn" id="btnB" title="Back">▼</button>
+    <div style="width:48px"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// WebGL first-person Gaussian-style point cloud room
+// ═══════════════════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('c');
+
+function resize(){
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  if(gl) gl.viewport(0,0,canvas.width,canvas.height);
+}
+window.addEventListener('resize', resize);
+
+const gl = canvas.getContext('webgl',{antialias:true,alpha:false});
+if(!gl){document.body.innerHTML='<p style="color:#fff;padding:40px">WebGL not available</p>';throw 0;}
+resize();
+
+// ── Shaders ───────────────────────────────────────────────────────────────────
+const VS = `
+  precision highp float;
+  attribute vec3 aPos;
+  attribute vec3 aCol;
+  attribute float aSz;
+  uniform mat4 uMVP;
+  varying vec3 vCol;
+  varying float vDepth;
+  void main(){
+    vec4 cp = uMVP * vec4(aPos, 1.0);
+    gl_Position = cp;
+    float depth = max(cp.w, 0.01);
+    // Optimized point sizes for high-performance seamless coverage
+    gl_PointSize = clamp(aSz * 3400.0 / depth, 2.5, 20.0);
+    vCol = aCol;
+    vDepth = clamp(1.0 - depth * 0.04, 0.2, 1.0);
+  }`;
+
+const FS = `
+  precision mediump float;
+  varying vec3 vCol;
+  varying float vDepth;
+  void main(){
+    vec2 d = gl_PointCoord - vec2(0.5);
+    float r2 = dot(d,d);
+    if(r2 > 0.25) discard;
+    // High-exponent Gaussian decay to prevent overlapping points from stacking into blurry clouds
+    float alpha = exp(-16.0 * r2) * vDepth * 0.96;
+    gl_FragColor = vec4(vCol, alpha);
+  }`;
+
+function mkShader(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, mkShader(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, mkShader(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+
+const aPos = gl.getAttribLocation(prog,'aPos');
+const aCol = gl.getAttribLocation(prog,'aCol');
+const aSz  = gl.getAttribLocation(prog,'aSz');
+const uMVP = gl.getUniformLocation(prog,'uMVP');
+
+// ── Generate room point cloud ─────────────────────────────────────────────────
+const N  = 180000;
+const PA = new Float32Array(N*3);
+const CA = new Float32Array(N*3);
+const SA = new Float32Array(N);
+
+let _seed = 9999;
+function rng(){ _seed=(_seed*1664525+1013904223)>>>0; return _seed/4294967296; }
+
+const RW=8, RH=3.0, RD=12;
+let count = 0;
+
+// 1. Uniform Floor Grid (Warm Light Concrete)
+for(let x = -RW/2; x <= RW/2; x += 0.048) {
+  for(let z = -RD/2; z <= RD/2; z += 0.048) {
+    if(count >= N) break;
+    const p = count * 3;
+    PA[p] = x + (rng() - 0.5) * 0.015;
+    PA[p+1] = -RH/2 + rng() * 0.02;
+    PA[p+2] = z + (rng() - 0.5) * 0.015;
+    const v = 0.28 + rng() * 0.22;
+    CA[p] = v + 0.08; CA[p+1] = v + 0.04; CA[p+2] = v - 0.05;
+    SA[count] = 0.017;
+    count++;
+  }
+}
+
+// 2. Uniform Ceiling Grid (Cool White)
+for(let x = -RW/2; x <= RW/2; x += 0.048) {
+  for(let z = -RD/2; z <= RD/2; z += 0.048) {
+    if(count >= N) break;
+    const p = count * 3;
+    PA[p] = x + (rng() - 0.5) * 0.015;
+    PA[p+1] = RH/2 - rng() * 0.02;
+    PA[p+2] = z + (rng() - 0.5) * 0.015;
+    const v = 0.72 + rng() * 0.18;
+    CA[p] = v; CA[p+1] = v + 0.01; CA[p+2] = v + 0.05;
+    SA[count] = 0.015;
+    count++;
+  }
+}
+
+// 3. Uniform Left Wall Grid (Blue-Grey)
+for(let y = -RH/2; y <= RH/2; y += 0.048) {
+  for(let z = -RD/2; z <= RD/2; z += 0.048) {
+    if(count >= N) break;
+    const p = count * 3;
+    PA[p] = -RW/2 + rng() * 0.02;
+    PA[p+1] = y + (rng() - 0.5) * 0.015;
+    PA[p+2] = z + (rng() - 0.5) * 0.015;
+    const v = 0.38 + rng() * 0.22;
+    CA[p] = v - 0.06; CA[p+1] = v; CA[p+2] = v + 0.14;
+    SA[count] = 0.014;
+    count++;
+  }
+}
+
+// 4. Uniform Right Wall Grid (Warm)
+for(let y = -RH/2; y <= RH/2; y += 0.048) {
+  for(let z = -RD/2; z <= RD/2; z += 0.048) {
+    if(count >= N) break;
+    const p = count * 3;
+    PA[p] = RW/2 - rng() * 0.02;
+    PA[p+1] = y + (rng() - 0.5) * 0.015;
+    PA[p+2] = z + (rng() - 0.5) * 0.015;
+    const v = 0.36 + rng() * 0.20;
+    CA[p] = v + 0.08; CA[p+1] = v + 0.02; CA[p+2] = v - 0.06;
+    SA[count] = 0.014;
+    count++;
+  }
+}
+
+// 5. Uniform Back Wall Grid (Accent Teal)
+for(let x = -RW/2; x <= RW/2; x += 0.048) {
+  for(let y = -RH/2; y <= RH/2; y += 0.048) {
+    if(count >= N) break;
+    const p = count * 3;
+    PA[p] = x + (rng() - 0.5) * 0.015;
+    PA[p+1] = y + (rng() - 0.5) * 0.015;
+    PA[p+2] = -RD/2 + rng() * 0.02;
+    const v = 0.30 + rng() * 0.16;
+    CA[p] = v - 0.04; CA[p+1] = v + 0.06; CA[p+2] = v + 0.16;
+    SA[count] = 0.014;
+    count++;
+  }
+}
+
+// 6. Detailed Furniture Splats (Fill remaining points to N)
+while(count < N) {
+  const t = rng();
+  const p = count * 3;
+  let x, y, z, r, g, b, s;
+
+  if(t < 0.25) {
+    // Desk Top (Honey Wood)
+    x = -1.2 + (rng() - 0.5) * 2.8; y = -RH/2 + 0.85 + rng() * 0.06; z = 0.4 + (rng() - 0.5) * 1.4;
+    r = 0.55 + rng() * 0.20; g = 0.35 + rng() * 0.14; b = 0.12 + rng() * 0.10; s = 0.009;
+  } else if(t < 0.45) {
+    // Desk Body / Legs
+    x = -1.2 + (rng() - 0.5) * 2.9; y = -RH/2 + rng() * 0.87; z = 0.4 + (rng() - 0.5) * 1.5;
+    const v = 0.18 + rng() * 0.12; r = v; g = v; b = v + 0.02; s = 0.006;
+  } else if(t < 0.65) {
+    // Chair
+    x = 1.4 + (rng() - 0.5) * 0.9; y = -RH/2 + rng() * 1.6; z = -0.7 + (rng() - 0.5) * 1.0;
+    const v = 0.12 + rng() * 0.16; r = v; g = v + 0.01; b = v + 0.06; s = 0.007;
+  } else if(t < 0.80) {
+    // Monitor
+    x = -0.6 + (rng() - 0.5) * 0.5; y = -RH/2 + 1.3 + rng() * 0.7; z = -0.2 + (rng() - 0.5) * 0.1;
+    const v = 0.08 + rng() * 0.06; r = v; g = v; b = v + 0.04; s = 0.007;
+    if(rng() > 0.7) { r = 0.05 + rng() * 0.15; g = 0.30 + rng() * 0.35; b = 0.55 + rng() * 0.35; }
+  } else if(t < 0.90) {
+    // Window bloom
+    x = RW/2 - 0.05 + rng() * 0.12; y = (0.2 + rng() * 0.5) * RH - RH/2; z = (rng() - 0.5) * 4;
+    const lv = 0.88 + rng() * 0.12; r = lv; g = lv - 0.15 + rng() * 0.08; b = lv - 0.5 + rng() * 0.08; s = 0.006;
+  } else {
+    // Bookshelf
+    x = -RW/2 + 0.15 + (rng() - 0.5) * 0.3; y = (rng() - 0.5) * RH; z = -RD/2 + 0.15 + (rng() - 0.5) * 0.3;
+    r = 0.25 + rng() * 0.50; g = 0.15 + rng() * 0.30; b = 0.10 + rng() * 0.35; s = 0.008;
+  }
+
+  PA[p] = x; PA[p+1] = y; PA[p+2] = z;
+  CA[p] = Math.min(1, r); CA[p+1] = Math.min(1, g); CA[p+2] = Math.min(1, Math.max(0, b));
+  SA[count] = s;
+  count++;
+}
+
+function mkBuf(d){ const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,d,gl.STATIC_DRAW); return b; }
+const bPos=mkBuf(PA), bCol=mkBuf(CA), bSz=mkBuf(SA);
+
+// ── Matrix math ───────────────────────────────────────────────────────────────
+function mat4(){return new Float32Array(16)}
+
+function perspective(out, fov, asp, n, f){
+  const t=Math.tan(fov*.5);
+  out[0]=1/(t*asp);out[1]=0;out[2]=0;out[3]=0;
+  out[4]=0;out[5]=1/t;out[6]=0;out[7]=0;
+  out[8]=0;out[9]=0;out[10]=-(f+n)/(f-n);out[11]=-1;
+  out[12]=0;out[13]=0;out[14]=-2*f*n/(f-n);out[15]=0;
+  return out;
+}
+
+function fpvMatrix(out, ex,ey,ez, yaw,pitch){
+  // First-person view matrix from position + euler angles
+  const cy=Math.cos(yaw), sy=Math.sin(yaw);
+  const cp=Math.cos(pitch), sp=Math.sin(pitch);
+  // right = [-cy, 0, sy] (correct right-handed camera space coordinates)
+  // up    = [sy*sp, cp, cy*sp]  
+  // fwd   = [sy*cp, -sp, cy*cp]
+  const rx=-cy, ry=0,     rz=sy;
+  const ux=sy*sp, uy=cp,  uz=cy*sp;
+  const fx=sy*cp, fy=-sp, fz=cy*cp;
+  out[0]=rx; out[1]=ux; out[2]=-fx; out[3]=0;
+  out[4]=ry; out[5]=uy; out[6]=-fy; out[7]=0;
+  out[8]=rz; out[9]=uz; out[10]=-fz;out[11]=0;
+  out[12]=-(rx*ex+ry*ey+rz*ez);
+  out[13]=-(ux*ex+uy*ey+uz*ez);
+  out[14]= (fx*ex+fy*ey+fz*ez);
+  out[15]=1;
+  return out;
+}
+
+function mul44(out, a, b) {
+  const tmp = new Float32Array(16);
+  for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 4; r++) {
+      tmp[c * 4 + r] = 
+        a[0 * 4 + r] * b[c * 4 + 0] +
+        a[1 * 4 + r] * b[c * 4 + 1] +
+        a[2 * 4 + r] * b[c * 4 + 2] +
+        a[3 * 4 + r] * b[c * 4 + 3];
+    }
+  }
+  for (let i = 0; i < 16; i++) out[i] = tmp[i];
+  return out;
+}
+
+// ── Camera state (first-person) ───────────────────────────────────────────────
+let camX=0, camY=0.1, camZ=2.5;  // start inside room
+let yaw=Math.PI, pitch=0;         // facing into the room
+
+const SPEED=0.04;
+const pad={fwd:false,back:false,left:false,right:false,rotL:false,rotR:false};
+
+// Mouse look
+let dragging=false, lmx=0, lmy=0;
+canvas.addEventListener('mousedown', e=>{dragging=true;lmx=e.clientX;lmy=e.clientY;canvas.style.cursor='grabbing';});
+window.addEventListener('mouseup',   ()=>{dragging=false;canvas.style.cursor='grab';});
+window.addEventListener('mousemove', e=>{
+  if(!dragging) return;
+  yaw   -= (e.clientX-lmx)*0.004;
+  pitch  = Math.max(-1.3,Math.min(1.3,pitch-(e.clientY-lmy)*0.004));
+  lmx=e.clientX; lmy=e.clientY;
+});
+canvas.style.cursor='grab';
+
+// Keyboard
+window.addEventListener('keydown', e=>{
+  if(e.key==='w'||e.key==='ArrowUp')    pad.fwd=true;
+  if(e.key==='s'||e.key==='ArrowDown')  pad.back=true;
+  if(e.key==='a')                       pad.left=true;
+  if(e.key==='d')                       pad.right=true;
+  if(e.key==='ArrowLeft')               pad.rotL=true;
+  if(e.key==='ArrowRight')              pad.rotR=true;
+});
+window.addEventListener('keyup', e=>{
+  if(e.key==='w'||e.key==='ArrowUp')    pad.fwd=false;
+  if(e.key==='s'||e.key==='ArrowDown')  pad.back=false;
+  if(e.key==='a')                       pad.left=false;
+  if(e.key==='d')                       pad.right=false;
+  if(e.key==='ArrowLeft')               pad.rotL=false;
+  if(e.key==='ArrowRight')              pad.rotR=false;
+});
+
+// Receive key events from parent frame
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'keydown') {
+    const k = e.data.key;
+    if(k==='w'||k==='ArrowUp')    pad.fwd=true;
+    if(k==='s'||k==='ArrowDown')  pad.back=true;
+    if(k==='a')                   pad.left=true;
+    if(k==='d')                   pad.right=true;
+    if(k==='ArrowLeft')           pad.rotL=true;
+    if(k==='ArrowRight')          pad.rotR=true;
+  }
+  if (e.data && e.data.type === 'keyup') {
+    const k = e.data.key;
+    if(k==='w'||k==='ArrowUp')    pad.fwd=false;
+    if(k==='s'||k==='ArrowDown')  pad.back=false;
+    if(k==='a')                   pad.left=false;
+    if(k==='d')                   pad.right=false;
+    if(k==='ArrowLeft')           pad.rotL=false;
+    if(k==='ArrowRight')          pad.rotR=false;
+  }
+});
+
+// D-Pad buttons
+function addBtn(id, dir, down){
+  const btn=document.getElementById(id);
+  if(!btn) return;
+  const on=()=>{pad[dir]=down; if(down) btn.classList.add('pressed');};
+  const off=()=>{pad[dir]=false; btn.classList.remove('pressed');};
+  btn.addEventListener('pointerdown', e=>{e.preventDefault();on();});
+  btn.addEventListener('pointerup',   e=>{e.preventDefault();off();});
+  btn.addEventListener('pointerleave',e=>{off();});
+}
+addBtn('btnF','fwd',true);
+addBtn('btnB','back',true);
+addBtn('btnL','rotL',true);
+addBtn('btnR','rotR',true);
+
+document.getElementById('btnReset').addEventListener('click',()=>{
+  camX=0;camY=0.1;camZ=2.5;yaw=Math.PI;pitch=0;
+});
+
+// ── Room clamping ─────────────────────────────────────────────────────────────
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+
+// ── Render loop ───────────────────────────────────────────────────────────────
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+const P  = mat4();
+const V  = mat4();
+const MVP= mat4();
+
+let lt=0;
+function frame(ts){
+  const dt=Math.min((ts-lt)/1000,.05); lt=ts;
+
+  // Movement — forward direction ignores pitch so you walk flat
+  const fwdX = Math.sin(yaw)*SPEED;
+  const fwdZ = Math.cos(yaw)*SPEED;
+  const rgtX = Math.cos(yaw)*SPEED;
+  const rgtZ = -Math.sin(yaw)*SPEED;
+
+  if(pad.fwd) { camX+=fwdX; camZ+=fwdZ; }
+  if(pad.back){ camX-=fwdX; camZ-=fwdZ; }
+  if(pad.left){ camX-=rgtX; camZ-=rgtZ; }
+  if(pad.right){camX+=rgtX; camZ+=rgtZ; }
+
+  // Turn Left/Right on D-pad
+  const ROT_SPEED = 1.3;
+  if(pad.rotL) yaw += ROT_SPEED * dt;
+  if(pad.rotR) yaw -= ROT_SPEED * dt;
+
+  // Clamp inside room
+  camX=clamp(camX,-RW/2+.3,RW/2-.3);
+  camY=clamp(camY,-RH/2+.5,RH/2-.2);
+  camZ=clamp(camZ,-RD/2+.3,RD/2-.3);
+
+  gl.clearColor(.02,.02,.03,1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  const asp=canvas.width/canvas.height;
+  perspective(P, Math.PI/2.8, asp, 0.05, 200);
+  fpvMatrix(V, camX,camY,camZ, yaw,pitch);
+  mul44(MVP,P,V);
+
+  gl.uniformMatrix4fv(uMVP,false,MVP);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER,bPos);
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos,3,gl.FLOAT,false,0,0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER,bCol);
+  gl.enableVertexAttribArray(aCol);
+  gl.vertexAttribPointer(aCol,3,gl.FLOAT,false,0,0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER,bSz);
+  gl.enableVertexAttribArray(aSz);
+  gl.vertexAttribPointer(aSz,1,gl.FLOAT,false,0,0);
+
+  gl.drawArrays(gl.POINTS,0,N);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
